@@ -1,0 +1,31 @@
+{
+    "name": "halosight-embed",
+    "version": "1.0.0",
+    "main": "dist/index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx}\"",
+        "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx}\"",
+        "build": "webpack",
+        "prepublishOnly": "npm run build"
+    },
+    "keywords": [
+        "halosight",
+        "embed",
+        "iframe"
+    ],
+    "author": "Tyler Edwards",
+    "license": "MIT",
+    "description": "Helper library for embedding Halosight components",
+    "types": "dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
+    "devDependencies": {
+        "prettier": "^3.6.2"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/yourusername/halosight-embedding-helper.git"
+    }
+}

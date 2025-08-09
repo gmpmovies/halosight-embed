@@ -1,0 +1,1 @@
+export const BASE_EMBEDDING_URL = 'https://embed.halosight.com'
