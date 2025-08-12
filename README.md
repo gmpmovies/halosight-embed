@@ -14,16 +14,38 @@ or
 yarn add halosight-embedding-helper
 ```
 
+### CDN Usage
+
+You can include the Halosight Embedding Helper directly from any of these CDNs:
+
+#### jsDelivr
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/halosight-embedding-helper@latest/dist/index.js"></script>
+<!-- Minified version -->
+<script src="https://cdn.jsdelivr.net/npm/halosight-embedding-helper@latest/dist/index.min.js"></script>
+```
+
+#### Unpkg
+
+```html
+<script src="https://unpkg.com/halosight-embedding-helper@latest/dist/index.js"></script>
+<!-- Minified version -->
+<script src="https://unpkg.com/halosight-embedding-helper@latest/dist/index.min.js"></script>
+```
+
 ## Usage
 
 ### Basic Setup
+
+#### Node
 
 ```javascript
 // File: /path/to/your/app.js
 import HalosightEmbed from 'halosight-embedding-helper';
 
 // Create an iframe element in your HTML
-// <iframe id="halosight-agent" src="https://embed.halosight.com/chat"></iframe>
+// <iframe id="halosight-agent" src="https://embed.halosight.com/****/"></iframe>
 
 // Initialize the embedding helper
 const halosightEmbed = new HalosightEmbed({
@@ -32,6 +54,38 @@ const halosightEmbed = new HalosightEmbed({
     tenantId: 'your-tenant-id',
     debug: false, // Set to true for verbose logging
 });
+```
+
+#### Vanilla JS
+
+```html
+<html>
+    <head>
+        <script src="https://cdn.jsdelivr.net/npm/halosight-embed/dist/index.js"></script>
+    </head>
+    <body>
+        <iframe src="https://embed.halosight.com/****" title="Embedded Chat" id="chatIframe">
+        </iframe>
+        <script>
+            const halosight = new HalosightEmbed({
+                iframeId: 'chatIframe',
+                agentId: 'your-agent-id',
+                tenantId: 'your-tenant-id',
+                debug: false, // Set to tru for verbose logging
+            }).onRegister(() => {
+                // Insert UI attributes - Attributes vary by component type
+                halosight.insertUiAttributes({
+                    title: 'My Cool Title',
+                });
+                // Insert agent arguments - Arguments vary depending on the agent
+                halosight.insertAgentArguments({
+                    accountId: 'your-account-id',
+                    userId: 'your-user-id',
+                });
+            });
+        </script>
+    </body>
+</html>
 ```
 
 ### Advanced Configuration

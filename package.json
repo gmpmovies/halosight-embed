@@ -1,6 +1,6 @@
 {
     "name": "halosight-embed",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "main": "dist/index.js",
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
@@ -31,6 +31,6 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/gmpmovies/halosight-embed.git"
+        "url": "git+https://github.com/gmpmovies/halosight-embed.git"
     }
 }
