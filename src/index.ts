@@ -5,12 +5,15 @@ import {
     OutboundIframeActions,
     OutboundIframeMessage,
 } from './types/iframe';
+import { Logger, Log } from './utils/logger';
 
 type HalosightEmbedConfig = {
     iframeId: string;
     agentId: string;
     tenantId?: string;
     debug?: boolean;
+
+    getIframeElement?: () => HTMLIFrameElement | null;
 };
 
 type RegisterCallback = () => void;
@@ -27,6 +30,7 @@ export class HalosightEmbed {
     private _cleanup: () => void;
     private _isDestroyed: boolean = false;
     private _unloadHandler: (() => void) | null = null;
+    private _getIframeElement: () => HTMLIFrameElement | null;
 
     // Add event listeners storage
     private registerCallbacks: RegisterCallback[] = [];
@@ -36,6 +40,11 @@ export class HalosightEmbed {
         this.agentId = config.agentId;
         this.tenantId = config.tenantId;
         this._debug = config.debug;
+
+        Logger.getInstance().setDebug(!!config.debug);
+        Log.info('Debug mode is enabled for the HalosightEmbed helper.');
+
+        this._getIframeElement = config.getIframeElement || this.defaultGetElementById.bind(this);
 
         // Setup cleanup and register iframe
         this._cleanup = this.register();
@@ -104,9 +113,7 @@ export class HalosightEmbed {
      */
     insertAgentArguments(args: Record<string, unknown>) {
         if (typeof args !== 'object') {
-            if (this.debug) {
-                console.warn('param args in insertAgentArguments() MUST be an object');
-            }
+            Log.warn('param args in insertAgentArguments() MUST be an object');
             return;
         }
         this.sendMessage({
@@ -123,9 +130,7 @@ export class HalosightEmbed {
      */
     insertUiAttributes(attrs: Record<string, unknown>) {
         if (typeof attrs !== 'object') {
-            if (this.debug) {
-                console.warn('param attrs in insertAgentArguments() MUST be an object');
-            }
+            Log.warn('param attrs in insertAgentArguments() MUST be an object');
             return;
         }
         this.sendMessage({
@@ -137,24 +142,18 @@ export class HalosightEmbed {
     private sendMessage(message: OutboundIframeMessage) {
         try {
             if (!this.instanceId) {
-                if (this.debug) {
-                    console.warn('No Halosight frame instance found for communication');
-                }
-
+                Log.warn('No Halosight frame instance found for communication');
                 return;
             }
             if (!this.iframeElement) {
-                if (this.debug) {
-                    console.warn(`Halosight iframe not detected. Has it been registered?`);
-                }
+                Log.warn(`Halosight iframe not detected. Has it been registered?`);
                 return;
             }
             message = { ...message, instanceId: this.instanceId };
+            Log.debug('Message sent to iframe: ', message);
             this.iframeElement.contentWindow!.postMessage(message, BASE_EMBEDDING_URL);
         } catch (err) {
-            if (this.debug) {
-                console.warn(`Failed to send message to iframe ${this.iframeId}`, err);
-            }
+            Log.warn(`Failed to send message to iframe ${this.iframeId}`, err);
         }
     }
 
@@ -163,21 +162,19 @@ export class HalosightEmbed {
      * @returns A cleanup lifecycle hook
      */
     private register(): () => void {
+        // Event listener
         const handler = (event: MessageEvent<InboundIframeMessage>): void => {
             // Filter out events that don't from from Halosight
             if (event.origin !== BASE_EMBEDDING_URL) {
-                console.log('Received message from unknown origin:', event.origin);
                 return;
             }
 
             // Retrieve the iframe element
-            this.iframeElement = this.iframeElement
-                ? this.iframeElement
-                : this.getElementById(this.iframeId);
+            this.iframeElement = this.iframeElement ? this.iframeElement : this._getIframeElement();
             if (!this.iframeElement) {
-                if (this.debug) {
-                    console.warn(`Could not find iframe by id: ${this.iframeId}`);
-                }
+                Log.warn(
+                    `Could not find iframe element. Make you you are passing in the correct Id, or that your getIframeElement callback is returning a valid HTMLElement.`
+                );
                 return;
             }
 
@@ -188,15 +185,13 @@ export class HalosightEmbed {
 
             const data = event.data;
 
-            console.log('Message received from iframe:', data);
+            Log.debug('Message received from iframe: ', data);
             switch (data.action) {
                 case InboundIframeActions.REGISTER:
                     this.handleComponentRegistered(data);
                     break;
                 default:
-                    if (this.debug) {
-                        console.warn(`Unkown inbound action from Halosight iframe: ${data.action}`);
-                    }
+                    Log.warn(`Unkown inbound action from Halosight iframe: ${data.action}`);
             }
         };
 
@@ -227,24 +222,22 @@ export class HalosightEmbed {
                 try {
                     callback();
                 } catch (callbackErr) {
-                    console.error('Error in onRegister callback', callbackErr);
+                    Log.error('Error in onRegister callback', callbackErr);
                 }
             });
         } catch (err) {
-            console.error('Error registering halosight component', err);
+            Log.error('Error registering halosight component', err);
         }
     }
 
     /**
-     * Safely gets an element by ID (browser only)
+     * Default implementation to get an element by ID (browser only)
      * @param id Element ID
      * @returns HTMLElement or null
      */
-    private getElementById(id: string): HTMLIFrameElement | null {
+    private defaultGetElementById(id: string = this.iframeId): HTMLIFrameElement | null {
         if (typeof document === 'undefined') {
-            if (this.debug) {
-                console.warn('getElementById called in non-browser environment');
-            }
+            Log.warn('getElementById called in non-browser environment');
             return null;
         }
 
