@@ -8,7 +8,7 @@ export type OutboundIframeMessage = {
 };
 
 export type InboundIframeMessage = {
-    [key: string]: any;
+    payload?: Record<string, unknown>;
     action: InboundIframeActions;
     instanceId: string;
     chatId: string;
@@ -16,6 +16,7 @@ export type InboundIframeMessage = {
 
 export const enum InboundIframeActions {
     REGISTER = 'register',
+    AUTO_SCALE_Y = 'auto_scale_y',
 }
 
 export const enum OutboundIframeActions {

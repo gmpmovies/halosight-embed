@@ -190,6 +190,9 @@ export class HalosightEmbed {
                 case InboundIframeActions.REGISTER:
                     this.handleComponentRegistered(data);
                     break;
+                case InboundIframeActions.AUTO_SCALE_Y:
+                    this.handleAutoScaleY(this.iframeElement, data.payload);
+                    break;
                 default:
                     Log.warn(`Unkown inbound action from Halosight iframe: ${data.action}`);
             }
@@ -205,6 +208,18 @@ export class HalosightEmbed {
         };
 
         return cleanup;
+    }
+
+    private handleAutoScaleY(iframeElement: HTMLIFrameElement, payload?: Record<string, unknown>) {
+        if (!payload) {
+            Log.warn('Recieved autoscale event with no payload, event will be ignored');
+            return;
+        }
+        if (!payload.height) {
+            Log.warn('No height property found on autoscale-y event, event will be ignored');
+            return;
+        }
+        iframeElement.height = `${payload.height}`;
     }
 
     private handleComponentRegistered(data: InboundIframeMessage) {
