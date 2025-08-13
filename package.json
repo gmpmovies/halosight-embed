@@ -1,18 +1,17 @@
 {
     "name": "halosight-embed",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "main": "dist/index.js",
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
         "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx}\"",
         "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx}\"",
         "build": "webpack",
-        "prepublishOnly": "npm run build"
+        "prepublishOnly": "npm run build",
+        "publish": "npm publish"
     },
     "keywords": [
-        "halosight",
-        "embed",
-        "iframe"
+        "halosight"
     ],
     "author": "Tyler Edwards",
     "license": "MIT",
