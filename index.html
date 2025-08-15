@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<!-- THIS FILE IS JUST FOR TESTING PURPOSES -->
+<html>
+
+<head>
+    <title>Embedded Chat</title>
+    <style>
+        .chat-iframe {
+            width: 100%;
+            height: 600px;
+            width: 500px;
+            border: none;
+        }
+    </style>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/halosight-embed/dist/index.js"></script> -->
+    <script src="./dist/index.js"></script>
+</head>
+
+<body>
+    <iframe src="https://embed.halosight.com/insights" class="chat-iframe" title="Embedded Chat" id="chatIframe">
+    </iframe>
+
+    <script>
+        const agentId = 'e8da4f24-5945-45e4-81ff-a2fb4c49ee64';
+        const tenantId = '6b7d7fa0-547d-4322-9637-4781e9317368'
+        // Initialize the embed helper
+        const halosight = new HalosightEmbed({
+            iframeId: 'chatIframe',
+            agentId: agentId,
+            tenantId: tenantId,
+            debug: true
+        }).onRegister(() => {
+            console.log('Halosight component is registered and ready!');
+            halosight.insertUiAttributes({
+                title: 'Test'
+            })
+            // Insert agent arguments
+            halosight.insertAgentArguments({
+                recordId: '001fj00000AREXNAA5'
+            });
+        });
+    </script>
+</body>
+
+</html>

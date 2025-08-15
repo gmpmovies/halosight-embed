@@ -1,5 +1,7 @@
 import { BASE_EMBEDDING_URL } from './constants';
 import {
+    ComponentType,
+    CrossIframeMessageTypes,
     InboundIframeActions,
     InboundIframeMessage,
     OutboundIframeActions,
@@ -10,6 +12,7 @@ import { Logger, Log } from './utils/logger';
 type HalosightEmbedConfig = {
     iframeId: string;
     agentId: string;
+    type?: ComponentType;
     tenantId?: string;
     debug?: boolean;
 
@@ -19,8 +22,12 @@ type HalosightEmbedConfig = {
 type RegisterCallback = () => void;
 
 export class HalosightEmbed {
+    // Static registry to track all instances
+    private static instanceRegistry: Map<string, HalosightEmbed> = new Map();
+
     iframeId: string;
     agentId: string;
+    type?: ComponentType;
     instanceId?: string;
     tenantId?: string;
 
@@ -39,6 +46,7 @@ export class HalosightEmbed {
         this.iframeId = config.iframeId;
         this.agentId = config.agentId;
         this.tenantId = config.tenantId;
+        this.type = config.type;
         this._debug = config.debug;
 
         Logger.getInstance().setDebug(!!config.debug);
@@ -54,6 +62,16 @@ export class HalosightEmbed {
             this._unloadHandler = () => this.destroy();
             window.addEventListener('beforeunload', this._unloadHandler);
         }
+    }
+
+    // Static method to get an instance by its instanceId
+    public static getInstance(instanceId: string): HalosightEmbed | undefined {
+        return HalosightEmbed.instanceRegistry.get(instanceId);
+    }
+
+    // Static method to get all registered instances
+    public static getAllInstances(): HalosightEmbed[] {
+        return Array.from(HalosightEmbed.instanceRegistry.values());
     }
 
     get debug(): boolean | undefined {
@@ -89,6 +107,12 @@ export class HalosightEmbed {
      */
     destroy(): void {
         if (this._isDestroyed) return;
+
+        // Remove from registry when destroyed
+        if (this.instanceId) {
+            HalosightEmbed.instanceRegistry.delete(this.instanceId);
+            this.notifyInstanceRegistryChange();
+        }
 
         // Call the cleanup function
         if (this._cleanup) {
@@ -193,8 +217,11 @@ export class HalosightEmbed {
                 case InboundIframeActions.AUTO_SCALE_Y:
                     this.handleAutoScaleY(this.iframeElement, data.payload);
                     break;
+                case InboundIframeActions.CROSS_IFRAME_MESSAGE:
+                    this.handleCrossIframeMessage(data);
+                    break;
                 default:
-                    Log.warn(`Unkown inbound action from Halosight iframe: ${data.action}`);
+                    Log.warn(`Unkown inbound action from Halosight iframe`);
             }
         };
 
@@ -208,6 +235,66 @@ export class HalosightEmbed {
         };
 
         return cleanup;
+    }
+
+    private handleCrossIframeMessage(
+        data: InboundIframeMessage & { action: InboundIframeActions.CROSS_IFRAME_MESSAGE }
+    ) {
+        if (!data.payload) {
+            Log.warn('Received cross-iframe message with no payload');
+            return;
+        }
+
+        const { targetInstanceId, messageType, senderInstanceId } = data.payload;
+
+        // If a specific target is specified
+        if (targetInstanceId) {
+            this.sendCrossIframeMessage(messageType, data.payload.data, targetInstanceId);
+        } else {
+            // Broadcast to all other iframes
+            HalosightEmbed.getAllInstances().forEach((instance) => {
+                // Don't send back to the sender
+                if (
+                    instance.instanceId !== senderInstanceId &&
+                    instance.iframeElement &&
+                    instance.instanceId
+                ) {
+                    this.sendCrossIframeMessage(
+                        messageType,
+                        data.payload.data,
+                        instance.instanceId
+                    );
+                }
+            });
+        }
+    }
+
+    // Add a method to handle cross-iframe messaging
+    private sendCrossIframeMessage(
+        messageType: string,
+        data: Record<string, unknown>,
+        targetInstanceId: string
+    ): void {
+        if (!this.instanceId) {
+            Log.warn('Cannot send cross-iframe message: no instanceId');
+            return;
+        }
+
+        const targetInstance = HalosightEmbed.getInstance(targetInstanceId);
+        if (targetInstance && targetInstance.iframeElement) {
+            // Forward the message to the target iframe
+            targetInstance.iframeElement.contentWindow?.postMessage(
+                {
+                    action: OutboundIframeActions.CROSS_IFRAME_MESSAGE,
+                    instanceId: targetInstanceId,
+                    payload: data.payload,
+                    messageType,
+                },
+                BASE_EMBEDDING_URL
+            );
+        } else {
+            Log.warn(`Target iframe with instanceId ${targetInstanceId} not found`);
+        }
     }
 
     private handleAutoScaleY(iframeElement: HTMLIFrameElement, payload?: Record<string, unknown>) {
@@ -225,6 +312,24 @@ export class HalosightEmbed {
     private handleComponentRegistered(data: InboundIframeMessage) {
         try {
             this.instanceId = data.instanceId;
+
+            // Add this instance to the registry
+            if (this.instanceId) {
+                HalosightEmbed.instanceRegistry.set(this.instanceId, this);
+                this.notifyInstanceRegistryChange();
+            }
+
+            // Set the type or the component source according to the type
+            if (this.iframeElement) {
+                if (this.iframeElement.src) {
+                    this.type = this.iframeElement.src.split('/').pop() as ComponentType;
+                } else if (this.type) {
+                    this.iframeElement.src = `${BASE_EMBEDDING_URL}/${this.type}`;
+                } else {
+                    Log.warn('Either the src value or the type value are required.');
+                }
+            }
+
             this.sendMessage({
                 agentId: this.agentId,
                 tenantId: this.tenantId,
@@ -243,6 +348,37 @@ export class HalosightEmbed {
         } catch (err) {
             Log.error('Error registering halosight component', err);
         }
+    }
+
+    /**
+     * Notifies all other instances about changes in the instance registry
+     * @param changeType The type of change (instance_added or instance_removed)
+     * @param data Additional data about the change
+     */
+    private notifyInstanceRegistryChange(): void {
+        if (!this.instanceId) {
+            Log.warn('Cannot notify registry change: no instanceId');
+            return;
+        }
+
+        // Broadcast to all instances (including self)
+        this.handleCrossIframeMessage({
+            instanceId: this.instanceId,
+            action: InboundIframeActions.CROSS_IFRAME_MESSAGE,
+            payload: {
+                messageType: CrossIframeMessageTypes.COMPONENT_REGISTRY_UPDATED,
+                senderInstanceId: this.instanceId,
+                data: {
+                    registerd_components: HalosightEmbed.getAllInstances().map((instance) => {
+                        return {
+                            type: instance.type,
+                            instanceId: instance.instanceId,
+                            agentId: instance.agentId,
+                        };
+                    }),
+                },
+            },
+        });
     }
 
     /**
