@@ -48,6 +48,10 @@ export const enum CrossIframeMessageTypes {
     COMPONENT_REGISTRY_UPDATED = 'component_registry_updated',
 }
 
+export type AutoScaleYPayload = {
+    height: number;
+};
+
 export type CrossIframeMessagePayload = {
     targetInstanceId?: string;
     messageType: CrossIframeMessageTypes;

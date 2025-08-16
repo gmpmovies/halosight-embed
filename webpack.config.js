@@ -1,5 +1,9 @@
 const path = require('path');
 const TerserPlugin = require('terser-webpack-plugin');
+const Dotenv = require('dotenv-webpack');
+
+// Get environment
+const env = process.env.NODE_ENV || 'production';
 
 // Common configuration
 const commonConfig = {
@@ -25,12 +29,18 @@ const commonConfig = {
         },
         globalObject: 'this',
     },
+    plugins: [
+        new Dotenv({
+            path: `./.env.${env}`, // Path to your .env file
+            systemvars: true, // Load all system environment variables as well
+        }),
+    ],
 };
 
 // Production minified version
 const minifiedConfig = {
     ...commonConfig,
-    mode: 'production',
+    mode: env === 'development' ? 'development' : 'production',
     output: {
         ...commonConfig.output,
         filename: 'index.min.js',
@@ -44,7 +54,7 @@ const minifiedConfig = {
 // Production non-minified version
 const nonMinifiedConfig = {
     ...commonConfig,
-    mode: 'production',
+    mode: env === 'development' ? 'development' : 'production',
     output: {
         ...commonConfig.output,
         filename: 'index.js',

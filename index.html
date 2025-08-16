@@ -7,7 +7,6 @@
     <style>
         .chat-iframe {
             width: 100%;
-            height: 600px;
             width: 500px;
             border: none;
         }
@@ -17,7 +16,10 @@
 </head>
 
 <body>
-    <iframe src="https://embed.halosight.com/insights" class="chat-iframe" title="Embedded Chat" id="chatIframe">
+    <iframe src="https://localhost:5173/insights" class="chat-iframe" title="Embedded Chat" id="insightsIframe">
+    </iframe>
+
+    <iframe src="https://localhost:5173/chat" class="chat-iframe" height="600" title="Embedded Chat" id="chatIframe">
     </iframe>
 
     <script>
@@ -25,17 +27,34 @@
         const tenantId = '6b7d7fa0-547d-4322-9637-4781e9317368'
         // Initialize the embed helper
         const halosight = new HalosightEmbed({
-            iframeId: 'chatIframe',
+            iframeId: 'insightsIframe',
             agentId: agentId,
             tenantId: tenantId,
             debug: true
         }).onRegister(() => {
             console.log('Halosight component is registered and ready!');
             halosight.insertUiAttributes({
-                title: 'Test'
+                title: 'Gavin is cool'
             })
             // Insert agent arguments
             halosight.insertAgentArguments({
+                recordId: '001fj00000AREXNAA5'
+            });
+        });
+
+        const halosight2 = new HalosightEmbed({
+            iframeId: 'chatIframe',
+            agentId: agentId,
+            tenantId: tenantId,
+            debug: true,
+            type: 'chat'
+        }).onRegister(() => {
+            console.log('Halosight component is registered and ready!');
+            halosight2.insertUiAttributes({
+                title: 'Test'
+            })
+            // Insert agent arguments
+            halosight2.insertAgentArguments({
                 recordId: '001fj00000AREXNAA5'
             });
         });
