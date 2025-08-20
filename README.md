@@ -5,13 +5,13 @@ A lightweight JavaScript library for embedding and interacting with Halosight ag
 ## Installation
 
 ```bash
-npm install halosight-embedding-helper
+npm install halosight-embed
 ```
 
 or
 
 ```bash
-yarn add halosight-embedding-helper
+yarn add halosight-embed
 ```
 
 ### CDN Usage
@@ -21,17 +21,17 @@ You can include the Halosight Embedding Helper directly from any of these CDNs:
 #### jsDelivr
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/halosight-embedding-helper@latest/dist/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/halosight-embed@latest/dist/index.js"></script>
 <!-- Minified version -->
-<script src="https://cdn.jsdelivr.net/npm/halosight-embedding-helper@latest/dist/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/halosight-embed@latest/dist/index.min.js"></script>
 ```
 
 #### Unpkg
 
 ```html
-<script src="https://unpkg.com/halosight-embedding-helper@latest/dist/index.js"></script>
+<script src="https://unpkg.com/halosight-embed@latest/dist/index.js"></script>
 <!-- Minified version -->
-<script src="https://unpkg.com/halosight-embedding-helper@latest/dist/index.min.js"></script>
+<script src="https://unpkg.com/halosight-embed@latest/dist/index.min.js"></script>
 ```
 
 ## Usage
@@ -42,7 +42,7 @@ You can include the Halosight Embedding Helper directly from any of these CDNs:
 
 ```javascript
 // File: /path/to/your/app.js
-import HalosightEmbed from 'halosight-embedding-helper';
+import HalosightEmbed from 'halosight-embed';
 
 // Create an iframe element in your HTML
 // <iframe id="halosight-agent" src="https://embed.halosight.com/****/"></iframe>

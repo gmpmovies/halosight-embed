@@ -9,7 +9,30 @@ import {
 import { Log } from '../utils/logger';
 import { InstanceRegistry } from './registry.service';
 
+type MessageHandler = (event: MessageEvent<InboundIframeMessage>) => void;
+
 export class MessagingService {
+    private static handlers = new Set<MessageHandler>();
+    private static initialized = false;
+
+    private static init(): void {
+        if (!MessagingService.initialized) {
+            window.addEventListener('message', MessagingService.globalHandler);
+            MessagingService.initialized = true;
+        }
+    }
+
+    private static globalHandler = (event: MessageEvent<InboundIframeMessage>): void => {
+        // Call all registered handlers
+        MessagingService.handlers.forEach((handler) => {
+            try {
+                handler(event);
+            } catch (error) {
+                console.error('Error in message handler:', error);
+            }
+        });
+    };
+
     static sendMessage(
         iframeElement: HTMLIFrameElement | null,
         message: OutboundIframeMessage,
@@ -25,11 +48,22 @@ export class MessagingService {
                 return;
             }
             message = { ...message, instanceId };
-            Log.debug(`Message sent to ${iframeElement.src} iframe: `, message);
+            Log.debug(`Message sent to ${iframeElement.src} iframe: `, structuredClone(message));
             iframeElement.contentWindow!.postMessage(message, BASE_EMBEDDING_URL);
         } catch (err) {
             Log.warn(`Failed to send message to iframe`, err);
         }
+    }
+
+    static addMessageListener(handler: MessageHandler): () => void {
+        MessagingService.init();
+        MessagingService.handlers.add(handler);
+
+        // Return a cleanup function
+        return (): void => {
+            MessagingService.handlers.delete(handler);
+            MessagingService.cleanup();
+        };
     }
 
     /**
@@ -96,8 +130,8 @@ export class MessagingService {
                 Log.warn(`Target iframe with instanceId ${targetInstanceId} not found`);
             }
         } else {
-            // Broadcast to all instances
-            InstanceRegistry.getAllInstances().forEach((instance) => {
+            // Broadcast to all instances WITHIN the same page reference
+            InstanceRegistry.getAllMatchingPageInstances(senderInstanceId).forEach((instance) => {
                 if (instance.iframeElement && instance.instanceId) {
                     this.sendMessage(
                         instance.iframeElement,
@@ -114,6 +148,17 @@ export class MessagingService {
                     );
                 }
             });
+        }
+    }
+
+    /**
+     * Cleans up the global message event listener when no more handlers are registered
+     */
+    static cleanup(): void {
+        if (MessagingService.initialized && MessagingService.handlers.size === 0) {
+            window.removeEventListener('message', MessagingService.globalHandler);
+            MessagingService.initialized = false;
+            Log.debug('MessagingService global event listener removed');
         }
     }
 }

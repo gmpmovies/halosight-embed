@@ -1,5 +1,5 @@
 import { BASE_EMBEDDING_URL } from './constants';
-import { HalosightEmbedConfig, RegisterCallback } from './types/config';
+import { HalosightEmbedConfig, Callback } from './types/config';
 import {
     AutoScaleYPayload,
     ComponentType,
@@ -12,13 +12,17 @@ import { Logger, Log } from './utils/logger';
 import { getIframeElement, setIframeHeight } from './utils/dom';
 import { InstanceRegistry } from './services/registry.service';
 import { MessagingService } from './services/messaging.service';
+import { ActionResponse, CustomAction } from './types/action';
 
 export class HalosightEmbed {
-    iframeId: string;
+    iframeId: string; // iframe Id attribure
     agentId: string;
+    customChatSkill?: string;
+    actions?: CustomAction[];
     type?: ComponentType;
-    instanceId?: string;
+    instanceId?: string; // Instance Id provided by the iframe
     tenantId?: string;
+    pageUrl: string;
 
     private _debug?: boolean;
     private _iframeElement: HTMLIFrameElement | null = null;
@@ -29,14 +33,17 @@ export class HalosightEmbed {
     private _getIframeElement: () => HTMLIFrameElement | null;
 
     // Add event listeners storage
-    private registerCallbacks: RegisterCallback[] = [];
+    private registerCallbacks: Callback[] = [];
+    private actionCallbacks: Callback[] = [];
 
     constructor(config: HalosightEmbedConfig) {
         this.iframeId = config.iframeId;
         this.agentId = config.agentId;
+        this.customChatSkill = config.customChatSkill;
+        this.actions = config.actions;
         this.tenantId = config.tenantId;
-        this.type = config.type;
         this._debug = config.debug;
+        this.pageUrl = typeof window !== 'undefined' ? window.location.href : '';
 
         Logger.getInstance().setDebug(!!config.debug);
         Log.info('Debug mode is enabled for the HalosightEmbed helper.');
@@ -45,18 +52,11 @@ export class HalosightEmbed {
 
         // Setup cleanup and register iframe
         this._cleanup = this.register();
-    }
 
-    private _setupFrame(): void {
-        this.iframeElement = this.iframeElement ? this.iframeElement : this._getIframeElement();
-        if (this.iframeElement) {
-            if (this.iframeElement?.src && this.iframeElement.src.split('/').pop()) {
-                this.type = this.iframeElement.src.split('/').pop() as ComponentType;
-            } else {
-                Log.error('No component type detected in iframe URL');
-            }
-        } else {
-            Log.error(`iframe not found`);
+        // Setup automatic cleanup on page unload
+        if (typeof window !== 'undefined') {
+            this._unloadHandler = () => this.destroy();
+            window.addEventListener('beforeunload', this._unloadHandler);
         }
     }
 
@@ -76,7 +76,7 @@ export class HalosightEmbed {
      * Specifies a callback action for after the component has registered
      * @param callback The callback method
      */
-    public onRegister(callback: RegisterCallback): HalosightEmbed {
+    public onRegister(callback: Callback): HalosightEmbed {
         this.registerCallbacks.push(callback);
 
         if (this._isInitialized && callback) {
@@ -86,9 +86,16 @@ export class HalosightEmbed {
         return this;
     }
 
+    public onAction(callback: Callback<ActionResponse>): HalosightEmbed {
+        this.actionCallbacks.push(callback);
+
+        return this;
+    }
+
     public destroy(): void {
         Log.info('Destroying: ', this);
         if (this._isDestroyed) return;
+        this._isDestroyed = true;
 
         // Remove from registry when destroyed
         if (this.instanceId) {
@@ -108,7 +115,6 @@ export class HalosightEmbed {
 
         // Clear callbacks
         this.registerCallbacks = [];
-        this._isDestroyed = true;
     }
 
     insertAgentArguments(args: Record<string, unknown>) {
@@ -140,7 +146,7 @@ export class HalosightEmbed {
     }
 
     private register(): () => void {
-        const handler = (event: MessageEvent<InboundIframeMessage>): void => {
+        const cleanup = MessagingService.addMessageListener((event) => {
             if (event.origin !== BASE_EMBEDDING_URL) {
                 return;
             }
@@ -169,18 +175,48 @@ export class HalosightEmbed {
                 case InboundIframeActions.CROSS_IFRAME_MESSAGE:
                     MessagingService.handleCrossIframeMessage(data, this.instanceId || '');
                     break;
+                case InboundIframeActions.ACTION:
+                    this.handleIframeAction(data);
+                    break;
                 default:
                     Log.warn(`Unknown inbound action from Halosight iframe`);
             }
-        };
-
-        window.addEventListener('message', handler);
+        });
 
         return (): void => {
             this._isInitialized = false;
             this.iframeElement = null;
-            window.removeEventListener('message', handler);
+            cleanup();
         };
+    }
+
+    private handleIframeAction(
+        message: InboundIframeMessage & { action: InboundIframeActions.ACTION }
+    ) {
+        this.actionCallbacks.forEach((callback) => {
+            try {
+                callback(message.payload);
+            } catch (err) {
+                Log.error('Error in iframeAction callback', err);
+            }
+        });
+    }
+
+    private _setupFrame(): void {
+        if (this.iframeElement) return;
+        this.iframeElement = this._getIframeElement();
+        if (this.iframeElement) {
+            this.iframeElement.style.border = 'none';
+            this.iframeElement.style.borderRadius = '8px';
+            if (this.iframeElement?.src && this.iframeElement.src.split('/').pop()) {
+                this.type = this.iframeElement.src.split('/').pop() as ComponentType;
+            } else {
+                Log.error('No component type detected in iframe URL');
+            }
+        } else {
+            Log.error(`iframe not found`);
+            this.destroy();
+        }
     }
 
     private handleAutoScaleY(iframeElement: HTMLIFrameElement, payload?: AutoScaleYPayload) {
@@ -206,7 +242,10 @@ export class HalosightEmbed {
             this.sendMessage({
                 agentId: this.agentId,
                 tenantId: this.tenantId,
+                customChatSkill: this.customChatSkill,
+                customChatActions: this.actions,
                 action: OutboundIframeActions.INIT,
+                payload: this.pageUrl,
             });
             this._isInitialized = true;
 

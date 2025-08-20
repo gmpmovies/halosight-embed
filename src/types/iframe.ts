@@ -1,3 +1,5 @@
+import { ActionResponse, CustomAction } from './action';
+
 // Message sent TO the iframe
 export type OutboundIframeMessage = {
     agentId?: string;
@@ -7,6 +9,9 @@ export type OutboundIframeMessage = {
 } & (
     | {
           action: OutboundIframeActions.INIT;
+          customChatSkill?: string;
+          customChatActions?: CustomAction[];
+          payload: string;
       }
     | {
           action: OutboundIframeActions.INSERT_AGENT_ARGUMENTS;
@@ -42,6 +47,10 @@ export type InboundIframeMessage = {
           action: InboundIframeActions.CROSS_IFRAME_MESSAGE;
           payload: CrossIframeMessagePayload;
       }
+    | {
+          action: InboundIframeActions.ACTION;
+          payload: ActionResponse;
+      }
 );
 
 export const enum CrossIframeMessageTypes {
@@ -63,6 +72,7 @@ export const enum InboundIframeActions {
     REGISTER = 'register',
     AUTO_SCALE_Y = 'auto_scale_y',
     CROSS_IFRAME_MESSAGE = 'cross_iframe_message',
+    ACTION = 'action',
 }
 
 export const enum OutboundIframeActions {

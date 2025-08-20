@@ -22,6 +22,18 @@ export class InstanceRegistry {
         return this._instances.get(instanceId);
     }
 
+    /**
+     * Returns all instances that are on the same pageRef as the sourceInstance
+     * @param sourceInstance
+     */
+    static getAllMatchingPageInstances(sourceInstanceId: string): HalosightEmbed[] {
+        const sourceInstance = InstanceRegistry.getInstance(sourceInstanceId);
+        if (!sourceInstance) return [];
+        return Array.from(this._instances.values()).filter(
+            (instance) => instance.pageUrl === sourceInstance.pageUrl
+        );
+    }
+
     static getAllInstances(): HalosightEmbed[] {
         return Array.from(this._instances.values());
     }
@@ -36,8 +48,11 @@ export class InstanceRegistry {
             return;
         }
 
+        // Map of registry data for all instances on the same page as the sender
         const registryData = {
-            registered_components: Array.from(this._instances.values()).map((instance) => ({
+            registered_components: InstanceRegistry.getAllMatchingPageInstances(
+                senderInstanceId
+            ).map((instance) => ({
                 type: instance.type,
                 instanceId: instance.instanceId,
                 agentId: instance.agentId,
