@@ -45,16 +45,6 @@
             agentId: agentId,
             tenantId: tenantId,
             debug: true,
-            customChatSkill: 'custom_chat',
-            actions: [{
-                name: "Send_Email",
-                description: 'Sends an email to the customer',
-                parameters: [
-                    { key: 'body', type: 'string', description: 'The email body', required: true },
-                    { key: 'subject', type: 'string', description: 'The email subject', required: true },
-                    { key: 'recipientEmail', type: 'string', description: 'The recipient email address', required: true }
-                ]
-            }]
         }).onRegister(() => {
             console.log('Halosight component is registered and ready!');
             halosight2.insertUiAttributes({
